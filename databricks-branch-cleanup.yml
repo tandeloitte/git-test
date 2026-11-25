@@ -1,0 +1,45 @@
+name: Clean up deleted branch in Databricks
+
+on:
+  delete:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to clean up in Databricks"
+        required: true
+
+permissions:
+  id-token: write   # needed for federation (option 1)
+  contents: read
+
+concurrency:
+  group: databricks-branch-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.ref_type == 'branch' && github.event.ref != 'main')
+    runs-on: ubuntu-latest
+    environment: databricks
+    timeout-minutes: 15
+    steps:
+      - name: Install Databricks CLI
+        uses: databricks/setup-cli@main   # pin to a release tag or commit SHA for production
+
+      - name: Trigger Databricks cleanup job
+        env:
+          DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+          DATABRICKS_AUTH_TYPE: github-oidc
+          DATABRICKS_CLIENT_ID: ${{ vars.DATABRICKS_TRIGGER_SP_CLIENT_ID }}
+          # Option 2 instead: set DATABRICKS_AUTH_TYPE to oauth-m2m and add
+          # DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_TRIGGER_SP_SECRET }}
+          BRANCH: ${{ github.event.inputs.branch || github.event.ref }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          JOB_ID: ${{ vars.DATABRICKS_CLEANUP_JOB_ID }}
+        run: |
+          echo "Cleaning up branch '$BRANCH' for $REPO_URL"
+          PARAMS=$(jq -n --arg b "$BRANCH" --arg r "$REPO_URL" \
+            '{job_parameters: {branch: $b, repo_url: $r}}')
+          databricks jobs run-now "$JOB_ID" --json "$PARAMS"
