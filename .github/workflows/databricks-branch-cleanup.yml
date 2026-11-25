@@ -40,6 +40,6 @@ jobs:
           JOB_ID: ${{ vars.DATABRICKS_CLEANUP_JOB_ID }}
         run: |
           echo "Cleaning up branch '$BRANCH' for $REPO_URL"
-          PARAMS=$(jq -n --arg b "$BRANCH" --arg r "$REPO_URL" \
-            '{job_parameters: {branch: $b, repo_url: $r}}')
-          databricks jobs run-now "$JOB_ID" --json "$PARAMS"
+          PARAMS=$(jq -n --argjson id "$JOB_ID" --arg b "$BRANCH" --arg r "$REPO_URL" \
+            '{job_id: $id, job_parameters: {branch: $b, repo_url: $r}}')
+          databricks jobs run-now --json "$PARAMS"
