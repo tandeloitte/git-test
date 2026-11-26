@@ -31,10 +31,12 @@ jobs:
       - name: Trigger Databricks cleanup job
         env:
           DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
-          DATABRICKS_AUTH_TYPE: github-oidc
           DATABRICKS_CLIENT_ID: ${{ vars.DATABRICKS_TRIGGER_SP_CLIENT_ID }}
-          # Option 2 instead: set DATABRICKS_AUTH_TYPE to oauth-m2m and add
-          # DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_TRIGGER_SP_SECRET }}
+          # Option 1: set DATABRICKS_AUTH_TYPE to github-oidc to use federation
+          # DATABRICKS_AUTH_TYPE: github-oidc
+          # Option 2 instead: set DATABRICKS_AUTH_TYPE to oauth-m2m and add the secret
+          DATABRICKS_AUTH_TYPE: oauth-m2m
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_TRIGGER_SP_SECRET }}
           BRANCH: ${{ github.event.inputs.branch || github.event.ref }}
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}
           JOB_ID: ${{ vars.DATABRICKS_CLEANUP_JOB_ID }}
