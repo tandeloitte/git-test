@@ -37,8 +37,6 @@ jobs:
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}
           JOB_ID: ${{ vars.DATABRICKS_CLEANUP_JOB_ID }}
         run: |
-          echo "Cleaning up branch '$BRANCH' for $REPO_URL"
-
           # Exchange the scoped secret for a short-lived token limited to the jobs API
           set -euo pipefail
           HOST="${DATABRICKS_HOST%/}"                       # remove a trailing slash
@@ -49,7 +47,7 @@ jobs:
           [ -n "$CLIENT_ID" ]     || { echo "CLIENT_ID is empty. Check the repository variable name."; exit 1; }
           [ -n "$CLIENT_SECRET" ] || { echo "CLIENT_SECRET is empty. Check the repository secret name."; exit 1; }
 
-          RESPONSE=$(curl -sS -X POST "$DATABRICKS_HOST/oidc/v1/token" \
+            RESPONSE=$(curl -sS -X POST "$HOST/oidc/v1/token" \
             -u "$CLIENT_ID:$CLIENT_SECRET" \
             -d "grant_type=client_credentials" \
             -d "scope=jobs" \
