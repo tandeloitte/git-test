@@ -31,17 +31,22 @@ jobs:
       - name: Trigger Databricks cleanup job
         env:
           DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
-          DATABRICKS_CLIENT_ID: ${{ vars.DATABRICKS_TRIGGER_SP_CLIENT_ID }}
-          # Option 1: set DATABRICKS_AUTH_TYPE to github-oidc to use federation
-          # DATABRICKS_AUTH_TYPE: github-oidc
-          # Option 2 instead: set DATABRICKS_AUTH_TYPE to oauth-m2m and add the secret
-          DATABRICKS_AUTH_TYPE: oauth-m2m
-          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_TRIGGER_SP_SECRET }}
+          CLIENT_ID: ${{ vars.DATABRICKS_TRIGGER_SP_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.DATABRICKS_TRIGGER_SP_SECRET }}
           BRANCH: ${{ github.event.inputs.branch || github.event.ref }}
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}
           JOB_ID: ${{ vars.DATABRICKS_CLEANUP_JOB_ID }}
         run: |
           echo "Cleaning up branch '$BRANCH' for $REPO_URL"
+
+          # Exchange the scoped secret for a short-lived token limited to the jobs API
+          TOKEN=$(curl -sSf -X POST "$DATABRICKS_HOST/oidc/v1/token" \
+            -u "$CLIENT_ID:$CLIENT_SECRET" \
+            -d "grant_type=client_credentials" \
+            -d "scope=jobs" | jq -r .access_token)
+          echo "::add-mask::$TOKEN"
+
           PARAMS=$(jq -n --argjson id "$JOB_ID" --arg b "$BRANCH" --arg r "$REPO_URL" \
             '{job_id: $id, job_parameters: {branch: $b, repo_url: $r}}')
-          databricks jobs run-now --json "$PARAMS"
+          DATABRICKS_AUTH_TYPE=pat DATABRICKS_TOKEN="$TOKEN" \
+            databricks jobs run-now --json "$PARAMS"
