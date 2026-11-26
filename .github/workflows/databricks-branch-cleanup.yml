@@ -40,10 +40,26 @@ jobs:
           echo "Cleaning up branch '$BRANCH' for $REPO_URL"
 
           # Exchange the scoped secret for a short-lived token limited to the jobs API
-          TOKEN=$(curl -sSf -X POST "$DATABRICKS_HOST/oidc/v1/token" \
+                    set -euo pipefail
+          echo "Cleaning up branch '$BRANCH' for $REPO_URL"
+
+          [ -n "$CLIENT_ID" ]     || { echo "CLIENT_ID is empty. Check the repository variable name."; exit 1; }
+          [ -n "$CLIENT_SECRET" ] || { echo "CLIENT_SECRET is empty. Check the repository secret name."; exit 1; }
+
+          RESPONSE=$(curl -sS -X POST "$DATABRICKS_HOST/oidc/v1/token" \
             -u "$CLIENT_ID:$CLIENT_SECRET" \
             -d "grant_type=client_credentials" \
-            -d "scope=jobs" | jq -r .access_token)
+            -d "scope=jobs" \
+            -w '\n%{http_code}')
+          STATUS=$(tail -n1 <<< "$RESPONSE")
+          BODY=$(sed '$d' <<< "$RESPONSE")
+
+          if [ "$STATUS" != "200" ]; then
+            echo "Token request failed with HTTP $STATUS: $BODY"
+            exit 1
+          fi
+
+          TOKEN=$(jq -r .access_token <<< "$BODY")
           echo "::add-mask::$TOKEN"
 
           PARAMS=$(jq -n --argjson id "$JOB_ID" --arg b "$BRANCH" --arg r "$REPO_URL" \
