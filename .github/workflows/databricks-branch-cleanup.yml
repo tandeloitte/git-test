@@ -40,7 +40,10 @@ jobs:
           echo "Cleaning up branch '$BRANCH' for $REPO_URL"
 
           # Exchange the scoped secret for a short-lived token limited to the jobs API
-                    set -euo pipefail
+          set -euo pipefail
+          HOST="${DATABRICKS_HOST%/}"                       # remove a trailing slash
+          [[ "$HOST" == https://* ]] || HOST="https://$HOST" # add https:// if missing
+          echo "Requesting token from $HOST/oidc/v1/token"
           echo "Cleaning up branch '$BRANCH' for $REPO_URL"
 
           [ -n "$CLIENT_ID" ]     || { echo "CLIENT_ID is empty. Check the repository variable name."; exit 1; }
